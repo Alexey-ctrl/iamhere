@@ -1,8 +1,9 @@
 # _*_ coding = utf-8 _*_
+import datetime
 
 from flask import Flask, request, render_template, make_response, send_from_directory, send_file
 from flask_restplus import Resource, Api, fields
-from model import Building, Stage, File, Base
+from model import Building, Stage, File, Base, Tag
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from werkzeug.datastructures import FileStorage
@@ -11,7 +12,7 @@ from flask_restplus import reqparse
 import os
 import sys
 import server
-
+from datetime import datetime
 
 app = Flask(__name__,
             static_url_path='', 
@@ -132,6 +133,48 @@ def index():
                 building_stages.append(stage.as_dict())
     return render_template('index.html', building=building, stages=building_stages, buildings=buildingsData)
 
+@api.route('/tag/<int:id>')
+class TagAPI(Resource):
+    def get(self, id):
+        return make_response(session.query(Tag).filter_by(id=id).first().as_dict())
+
+    def delete(self, id):
+        session.query(Tag).filter_by(id=id).delete()
+        session.commit()
+        return 'OK'
+
+@api.route('/tags')
+class TagsAPI(Resource):
+    tag = api.model('Tag', {
+        'name': fields.String,
+        'x': fields.Integer,
+        'y': fields.Integer,
+        'file_type': fields.Integer,
+        'stage_id': fields.Integer,
+        'created': fields.DateTime,
+        'length_in_days': fields.Integer,
+    })
+
+    def get(self):
+        result = []
+        for tag in session.query(Tag).all():
+            result.append(tag.as_dict())
+        # for tag in session.query(Tag).all():
+        #     result.append(tag.as_dict())
+        #     tags_for_del = session.query(Tag).filter_by(length_in_days <2)
+        #     d = addresses_table.delete().where(addresses_table.c.retired == 1)
+        #     d.execute()
+        return make_response(str(result))
+
+    @api.expect(tag)
+    def post(self):
+        created = datetime.strptime(request.json['created'], '%Y-%m-%dT%H:%M:%S.%fZ')
+        request.json['created'] = created
+        tag = Tag(**request.json)
+        session.add(tag)
+        session.commit()
+        return tag.id
+
 @app.route('/admin/<int:buildingId>')
 def admin(buildingId):
         buildingStages = []
@@ -166,7 +209,6 @@ def building_get(id):
 @app.route('/building-adder')
 def building_add():
     return render_template('buildingAddition.html')
-
 
 @app.route('/statistics')
 def statistics():
