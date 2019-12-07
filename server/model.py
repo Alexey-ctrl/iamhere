@@ -48,6 +48,7 @@ class Tag(Base):
         return {c.name: getattr(self, c.name) if type(getattr(self, c.name)) != bytes else \
             getattr(self, c.name).decode('utf-8') for c in self.__table__.columns}
 
+
 class Stage(Base):
     __tablename__ = 'stage'
 
